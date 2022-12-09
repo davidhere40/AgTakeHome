@@ -5,7 +5,7 @@ VisualStudioVersion = 17.3.32929.385
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileStorageAPI", "FileStorageAPI\FileStorageAPI.csproj", "{063FF3B5-A253-46A6-8283-94D5917DD1FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileStorageUnitTests", "FileStorageUnitTests\FileStorageUnitTests.csproj", "{0F4F9CE1-673D-4136-B55B-7CF66F4CCD0F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileStorageUnitTests", "FileStorageUnitTests\FileStorageUnitTests.csproj", "{0F4F9CE1-673D-4136-B55B-7CF66F4CCD0F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

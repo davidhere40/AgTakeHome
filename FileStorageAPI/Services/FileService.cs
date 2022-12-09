@@ -1,19 +1,20 @@
 namespace WebApi.Services;
 
 using FileStorageAPI.Data.Entities;
-using FileStorageAPI.Data.Models.Files;
 using FileStorageAPI.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using Microsoft.AspNetCore.Http;
+using System.Collections.Generic;
+using FileStorageAPI.Helpers;
+using System.Net.Mime;
+using Microsoft.AspNetCore.Mvc;
 
 public interface IFileService
 {
-    IEnumerable<CustomerFile> ListFiles();
-    CustomerFile GetByName(string name);
-    void Create(string name, UploadFileRequest model);
-    void Update(string name, UpdateFileRequest model);
-    void Delete(string name);
+    Task<IEnumerable<CustomerFile>> ListFilesAsync();
+    Task<CustomerFile> GetByNameAsync(string name);
+    Task CreateAsync(IFormFile formFile);
+    Task UpdateAsync(IFormFile formFile);
+    Task DeleteAsync(string name);
 }
 
 public class FileService : IFileService
@@ -25,83 +26,91 @@ public class FileService : IFileService
         _context = context;
     }
 
-    public IEnumerable<CustomerFile> ListFiles()
+    public async Task<IEnumerable<CustomerFile>> ListFilesAsync()
     {
         //Exclude binary data when listing files
-        var results = 
+        var task = 
             (from s in _context.CustomerFiles
              select new CustomerFile
              {
-                 Name = s.Name,
+                 FileName = s.FileName,
                  Version = s.Version,
-                 IsLatest = s.IsLatest,
+                 IsDeleted = s.IsDeleted,
                  CreateDate = s.CreateDate
-             }).ToList();
-        return results;
+             }).ToListAsync();
+        await task;
+        var listOfFiles = task.Result;
+        return listOfFiles;
     }
         
-    public CustomerFile GetByName(string name)
+    public async Task<CustomerFile> GetByNameAsync(string name)
     {
-        var customerFile = 
+        var task = 
             (from s in _context.CustomerFiles
-             where s.IsLatest == true && s.Name == name
-             select s).FirstOrDefault();
+             where s.IsDeleted == false && s.FileName == name
+             select s).FirstOrDefaultAsync();
+        await task;
+        var customerFile = task.Result;
         if (customerFile == null)
             throw new KeyNotFoundException("A file with that name was not found");
+
         return customerFile;
     }
 
-    public void Create(string name, UploadFileRequest model)
+    public async Task CreateAsync(IFormFile formFile)
     {
-        // validate
-        if (_context.CustomerFiles.Where(x => x.Name == name).FirstOrDefault() != null)
+        //validate
+        if (_context.CustomerFiles.Where(x => x.FileName == formFile.FileName).FirstOrDefault() != null)
             throw new ArgumentException("A file with that name already exists");
 
         // map model to new user object
         var newFile = new CustomerFile()
         {
-            Name = name,
-            Data = model.Data,
-            CreateDate = DateTime.Now,
+            FileName = formFile.FileName,
+            Data = Utility.GetFileBytes(formFile),
+            CreateDate = DateTime.Now.ToUniversalTime(),
             Version = 1,
-            IsLatest = true,
+            IsDeleted = false,
         };
 
         // save user
         _context.CustomerFiles.Add(newFile);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
-    public void Update(string name, UpdateFileRequest model)
+    public async Task UpdateAsync(IFormFile formFile)
     {
         using (var dbContextTransaction = _context.Database.BeginTransaction())
         {
-            CustomerFile? customerFile = _context.CustomerFiles.Where(x => x.IsLatest == true && x.Name == name).FirstOrDefault();
-            if(customerFile == null)
+            var task = _context.CustomerFiles.Where(x => x.IsDeleted == false && x.FileName == formFile.FileName).FirstOrDefaultAsync();
+            await task;
+            CustomerFile? customerFile = task.Result;
+            if (customerFile == null)
                 throw new ArgumentException("No file with that name was found");
 
-            //Update the current file as not latest
-            customerFile.IsLatest = false;
+            //Update the current file as deleted
+            customerFile.IsDeleted = true;
 
             var newFile = new CustomerFile()
             {
-                Name = name,
+                FileName = formFile.FileName,
                 Version = customerFile.Version + 1,
-                IsLatest = true,
-                CreateDate = DateTime.Now,
-                Data = model.Data,  
+                IsDeleted = false,
+                CreateDate = DateTime.Now.ToUniversalTime(),
+                Data = Utility.GetFileBytes(formFile),
             };
             _context.CustomerFiles.Add(newFile);
-            _context.SaveChanges();
-            dbContextTransaction.Commit();
+            await _context.SaveChangesAsync();
+            await dbContextTransaction.CommitAsync();
         }
     }
 
-    public void Delete(string name)
+    public async Task DeleteAsync(string name)
     {
-        int count = _context.CustomerFiles.Where(x => x.Name == name).ExecuteDelete();
-        if (count == 0)
+        var files = _context.CustomerFiles.Where(x => x.FileName == name && x.IsDeleted == false).ToList();
+        if (files.Count == 0)
             throw new ArgumentException("No file with that name was found");
-        _context.SaveChanges();
+        files.ForEach(x => x.IsDeleted = true);
+        await _context.SaveChangesAsync();
     }
 }

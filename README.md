@@ -14,31 +14,35 @@ To run the web app locally, you can run the project from visual studio. It's not
 ### Request
 
 	`GET /Files/`
+	`GET /Files/ListFilesAsync`
 	
 	No parameters
 	
-	Gets the list of files without the binary data
+	Gets the list of all files, included older versions and deleted files, without the binary data
 	
 ### Response
 
-    A list of files with the following data types: 
+    A list of files with the following data: 
 		string Name, 
 		int Version, 
-		bool IsLatest, 
+		bool IsDeleted, 
 		DateTime CreateDate
 	
 ## Create a File
 
 ### Request
 
-	`Post /Files/Create?name={name}`
+	`Post /Files`
 	
-	Query String Parameters:
-		Name: an alpha-numeric file name.
-	Body Parameters:
-		Data: The binary data of a file
+	Parameters:
+		IFormFile File
 		
-	Creates a new File. The resulting file has IsLatest set to true and a create date of the date created on the server.
+	Creates a new File. The resulting file has the following values:
+		Name: Name property of the IFormFile
+		Data: binary data of the file
+		IsDeleted: False
+		CreateDate: Date created on the server in UTC
+		Version: 1
 	
 ### Response
 
@@ -58,14 +62,13 @@ To run the web app locally, you can run the project from visual studio. It's not
 
 ### Request
 
-	`PUT /Files/Update?name={name}`
+	`PUT /Files`
 	
-	Query String Parameters:
-		Name: an alpha-numeric file name.
-	Body Parameters:
-		Data: The binary data of a file
+	Parameters:
+		IFormFile File
 		
-	When a file is updated, the version number is incremented and a new file record is created. The old one is not deleted. The latest file's IsLatest column is set to true and the old file's IsLatest column is set to false. The create date of the new file is the create date of the updated file. The old file version keeps it's original create date.
+	When a file is updated, the version number is incremented and a new file record is created. The old one is not deleted. The latest file's IsDeleted column is false and the old file's IsDeleted column is set to false. The create date of the new file is the create date of the updated file. The old file's CreateDate stays the same.
+	
 	
 ### Response
 
@@ -85,7 +88,7 @@ To run the web app locally, you can run the project from visual studio. It's not
 
 ### Request
 
-	`DELETE /Files/Delete?name={name}`
+	`DELETE /Files?name={name}`
 	
 	Query String Parameters:
 		Name: an alpha-numeric file name.
@@ -108,7 +111,7 @@ To run the web app locally, you can run the project from visual studio. It's not
 
 ### Request
 
-	`GET /Files/GetByName?name={name}`
+	`GET /Files/GetByNameAsync?name={name}`
 	
 	Query String Parameters:
 		Name: an alpha-numeric file name.
@@ -122,7 +125,7 @@ To run the web app locally, you can run the project from visual studio. It's not
 		string Name, 
 		byte[] Data, 
 		int Version, 
-		bool IsLatest, 
+		bool IsDeleted, 
 		DateTime CreateDate
 
 

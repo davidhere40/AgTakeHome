@@ -1,12 +1,31 @@
+using System.Reflection;
 using System.Text.Json.Serialization;
 using FileStorageAPI.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Version = "v1",
+        Title = "FileStorage API",
+        Description = "This is a simple file storage API service using .Net Core 6, SQL Lite, and Entity Framework. It allows binary files to be saved with a name and keeps track of previous versions.",
+        Contact = new OpenApiContact
+        {
+            Name = "David Jones",
+            Email = "davidhere40@gmail.com"
+        }
+    });
+    // Set the comments path for the Swagger JSON and UI.
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+});
 
 // add services to DI container
 {
@@ -28,12 +47,13 @@ builder.Services.AddSwaggerGen();
     services.AddScoped<IFileService, FileService>();
 }
 
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI();    
 }
 
 // configure HTTP request pipeline
@@ -55,8 +75,6 @@ using (var scope = app.Services.CreateScope())
 using (var context = scope.ServiceProvider.GetService<FileStorageAPIDBContext>())
 {
     context.Database.Migrate();
-    //Force the CustomerFile table to be created. I'm sure there's a better way.
-    string result = context.Database.GenerateCreateScript();
 }
 
 app.Run("http://localhost:5000");
